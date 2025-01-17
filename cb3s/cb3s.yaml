@@ -1,94 +1,112 @@
 esphome:
-  name: !secret model_name
+    name: !secret model_name
+    includes:
+        - citilux_ir.h
+
 bk72xx:
-  board: cb3s
-  framework:
-    version: latest
+    board: cb3s
 
 logger:
-  level: INFO
+    level: INFO
 
 api:
-  services:
-    - service: ir_send
-      variables:
-        data: string
+    services:
+        - service: ir_send
+          variables:
+              data: string
+              repeat_times: int
+          then:
+              - script.execute:
+                    id: send_pronto
+                    repeat_count: 1
+                    ir_code: !lambda return data;
+
+script:
+    - id: send_pronto
+      mode: queued
+      parameters:
+          ir_code: string
+          repeat_count: int
       then:
-        - remote_transmitter.transmit_pronto:
-            data: !lambda >-
-              ESP_LOGI("Sending PRONTO", data.c_str());
-              return data;
+          # - repeat:
+          #     count: !lambda |-
+          #       return repeat_count ? repeat_count : 50;
+          #     then:
+          - remote_transmitter.transmit_pronto:
+                data: !lambda return ir_code;
 
 wifi:
-  ssid: !secret ssid
-  password: !secret password
-  fast_connect: true
-  manual_ip:
-    static_ip: !secret ip
-    gateway: 192.168.1.1
-    subnet: 255.255.255.0
-  ap:
+    ssid: !secret ssid
     password: !secret password
+    fast_connect: true
+    manual_ip:
+        static_ip: !secret ip
+        gateway: 192.168.1.1
+        subnet: 255.255.255.0
+    ap:
+        password: !secret password
 
 ota:
-  password: !secret password
+    - platform: esphome
+      password: !secret password
 
 web_server:
-  port: 80
-  auth:
-    username: !secret username
-    password: !secret password
+    port: 80
+    # auth:
+    #   username: !secret username
+    #   password: !secret password
 
 time:
-  - platform: homeassistant
-    id: ha_time
+    - platform: homeassistant
+      id: ha_time
 
 remote_transmitter:
-  pin:
-    number: P26
-    inverted: false
-  carrier_duty_percent: 50%
-  
-remote_receiver:
-  id: rcvr
-  pin:
-    number: P7
-    inverted: true
-    mode:
-      input: true
-      pullup: true
-  on_pronto:
-    then:
-      - lambda: ESP_LOGI("Received Pronto",x.data.c_str());
-  tolerance: 10%
+    id: transmitter
+    carrier_duty_percent: 50%
+    pin:
+        number: P26
+        inverted: false
+
+# remote_receiver:
+#   id: rcvr
+#   pin:
+#     number: P7
+#     inverted: true
+#     mode:
+#       input: true
+#       pullup: true
+#   on_pronto:
+#     then:
+#       - lambda: ESP_LOGI("Received Pronto",x.data.c_str());
+#   tolerance: 10%
 
 button:
-  - platform: restart
-    name: "Reboot bridge"
-  - platform: factory_reset
-    id: factory_reset_trigger
-    name: "Wipe data"
+    - platform: restart
+      name: "Reboot bridge"
+    - platform: factory_reset
+      id: factory_reset_trigger
+      name: "Wipe data"
 
 binary_sensor:
-  - platform: gpio
-    id: bottom_button
-    pin:
-      number: P6
-      inverted: true
-    filters:
-      - delayed_on: 5s
-    on_press:
-      - output.turn_on: onboard_led
-      - button.press: factory_reset_trigger
-    on_release:
-      - output.turn_off: onboard_led
+    - platform: gpio
+      id: bottom_button
+      pin:
+          number: P6
+          inverted: true
+      filters:
+          - delayed_on: 5s
+      on_press:
+          - output.turn_on: onboard_led
+          - button.press: factory_reset_trigger
+      on_release:
+          - output.turn_off: onboard_led
 
 output:
-  - id: onboard_led
-    platform: gpio
-    pin:
-      number: P8
-    inverted: false
+    - id: onboard_led
+      platform: gpio
+      pin:
+          number: P8
+      inverted: false
 
 # climate:
 #   - platform: coolix
@@ -100,3 +118,12 @@ output:
 #     id: current_temperature
 #     entity_id: sensor.atc_6a6e_temperature
 #     internal: true
+
+light:
+    - platform: custom
+      lambda: |-
+          auto citilux_ir = new CitiluxIROutput();
+          App.register_component(citilux_ir);
+          return {citilux_ir};
+      lights:
+          - name: "Люстра"
