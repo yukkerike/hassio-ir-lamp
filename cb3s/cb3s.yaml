@@ -17,9 +17,10 @@ api:
               repeat_times: int
           then:
               - script.execute:
-                    id: send_pronto
-                    repeat_count: 1
-                    ir_code: !lambda return data;
+                  id: send_pronto
+                  repeat_count: !lambda |-
+                      return repeat_times ? repeat_times : 1;
+                  ir_code: !lambda return data;
 
 script:
     - id: send_pronto
@@ -28,12 +29,12 @@ script:
           ir_code: string
           repeat_count: int
       then:
-          # - repeat:
-          #     count: !lambda |-
-          #       return repeat_count ? repeat_count : 50;
-          #     then:
-          - remote_transmitter.transmit_pronto:
-                data: !lambda return ir_code;
+          - repeat:
+                count: !lambda return repeat_count;
+                then:
+                    - delay: 2ms
+                    - remote_transmitter.transmit_pronto:
+                        data: !lambda return ir_code;
 
 wifi:
     ssid: !secret ssid
