@@ -98,16 +98,16 @@ public:
         else if (brightness > 128)
         {
             send_ir("M3");
-            send_ir("bri-", round((255 - brightness) / 19.6153846154));
+            send_ir("bri-", round((255 - brightness) / 9.444444));
         }
-        else if (brightness < 40)
+        else if (brightness < 20)
         {
             send_ir("M1");
         }
         else
         {
             send_ir("M2");
-            send_ir("bri-", round((128 - brightness) / 19.6153846154));
+            send_ir("bri-", round((128 - brightness) / 9.444444));
         }
     }
 
