@@ -1,7 +1,10 @@
 esphome:
   name: !secret model_name
-  includes:
-    - citilux_ir.h
+
+external_components:
+  - source: 
+      type: local
+      path: components
 
 bk72xx:
   board: cb3s
@@ -72,6 +75,9 @@ remote_transmitter:
     inverted: false
 
 button:
+  - platform: restart
+    id: restart_button
+    name: "Перезагрузить"
   - platform: factory_reset
     id: factory_reset_trigger
     name: "Сбросить настройки"
@@ -88,18 +94,22 @@ remote_receiver:
   - pronto
 
 binary_sensor:
-  - platform: gpio
-    id: bottom_button
+  - id: bottom_button
+    platform: gpio
     pin:
       number: P6
       inverted: true
-    filters:
-      - delayed_on: 5s
-    on_press:
-      - output.turn_on:  onboard_led
-      - button.press: factory_reset_trigger
-    on_release:
-      - output.turn_off: onboard_led
+    on_click:
+      - min_length: 50ms
+        max_length: 150ms
+        then: 
+        - output.turn_on: onboard_led
+        - button.press: restart_button
+      - min_length: 5s
+        max_length: 10s
+        then:
+        - output.turn_on: onboard_led
+        - button.press: factory_reset_trigger
 
 output:
   - id: onboard_led
@@ -121,10 +131,6 @@ sensor:
     internal: true
 
 light:
-  - platform: custom
-    lambda: |-
-      auto citilux_ir = new CitiluxIROutput();
-      App.register_component(citilux_ir);
-      return {citilux_ir};
-    lights:
-      - name: "Люстра"
+  - platform: citilux_ir
+    name: "Люстра"
+    transmitter_id: transmitter
